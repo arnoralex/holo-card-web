@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>星潮魔導姬 全息卡牌</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+  /* Layout: a dark stage. The 9:16 card canvas fills the height on the left, one quiet control column sits on the right; they stack on phones. */
+  :root {
+    color-scheme: dark;
+    --ink: #04090f;      /* page ground: deep-sea black */
+    --panel: #0a1520;    /* raised surfaces */
+    --rule: #1b3040;     /* hairlines and control borders */
+    --text: #e4f4f7;
+    --muted: #86a3ae;
+    --aqua: #63e0ee;     /* the card's aether glow: interactive accent */
+    --gold: #f0cc7a;     /* the card's foil gold: names and numbers only */
+    --font-display: "Barlow", Bahnschrift, "Segoe UI", sans-serif;
+    --font-body: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    --font-mono: ui-monospace, Consolas, "SF Mono", monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--ink); color: var(--text); font: 400 15px/1.65 var(--font-body); }
+  .app { height: 100%; display: flex; justify-content: center; gap: 32px; padding-block: 16px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .stage { position: relative; flex: 0 1 auto; height: 100%; aspect-ratio: 9 / 16; max-width: 100%; border-radius: 14px; overflow: hidden;
+    background: #02060b center / cover no-repeat; }
+  .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  .stage canvas:active { cursor: grabbing; }
+  .status { position: absolute; left: 14px; bottom: 12px; margin: 0; padding: 4px 12px; border-radius: 99px; background: rgba(4, 9, 15, 0.78);
+    color: var(--muted); font: 12px/1.6 var(--font-mono); }
+  .status.error { right: 14px; border-radius: 10px; color: var(--text); font-family: var(--font-body); white-space: pre-wrap; }
+
+  .panel { flex: 0 0 300px; min-width: 0; display: flex; flex-direction: column; gap: 26px; overflow-y: auto; padding-block: 10px; }
+  .eyebrow { margin: 0; color: var(--aqua); font: 600 12px/1.4 var(--font-display); letter-spacing: 0.22em; }
+  h1 { margin: 4px 0 10px; color: var(--gold); font: 700 34px/1.2 var(--font-body); letter-spacing: 0.06em; text-wrap: balance; }
+  .lede { margin: 0; color: var(--muted); max-width: 34em; }
+  section { display: flex; flex-direction: column; gap: 10px; }
+  h2 { margin: 0; padding-bottom: 6px; border-bottom: 1px solid var(--rule); color: var(--text); font: 500 13px/1.4 var(--font-body); letter-spacing: 0.18em; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  button { font: 500 14px/1 var(--font-body); color: var(--text); background: transparent; border: 1px solid var(--rule); border-radius: 99px; padding: 9px 16px; cursor: pointer; }
+  button:hover { border-color: var(--aqua); }
+  button.primary { background: var(--aqua); border-color: var(--aqua); color: var(--ink); min-width: 7.5em; }
+  button[aria-pressed="true"] { border-color: var(--aqua); color: var(--aqua); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--aqua); outline-offset: 2px; }
+  #time { margin-left: auto; color: var(--muted); font: 12px/1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  input[type=range] { width: 100%; margin: 0; accent-color: var(--aqua); }
+  .field { display: grid; grid-template-columns: 6.5em 1fr; align-items: center; gap: 10px; }
+  #layers { display: flex; flex-direction: column; }
+  #layers label { display: flex; align-items: center; gap: 10px; padding: 4px 0; cursor: pointer; }
+  #layers input { accent-color: var(--aqua); margin: 0; }
+  #layers b { color: var(--gold); font: 500 12px/1 var(--font-mono); }
+  #layers span { margin-left: auto; color: var(--muted); font: 500 11px/1 var(--font-display); letter-spacing: 0.14em; }
+  .note { margin: 0; color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 760px) {
+    html, body { height: auto; }
+    .app { height: auto; flex-direction: column; align-items: center; gap: 20px; }
+    .stage { height: auto; width: min(100%, calc(74vh * 9 / 16)); }
+    .panel { flex: 0 0 auto; width: 100%; overflow: visible; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="stage" id="stageBox">
+    <canvas id="stage" aria-label="可拖曳旋轉的 3D 全息卡牌"></canvas>
+    <p class="status" id="loading">載入素材…</p>
+    <p class="status error" id="error" hidden></p>
+  </div>
+
+  <aside class="panel">
+    <header>
+      <p class="eyebrow">AETHER TIDE · #001/100 · SSR</p>
+      <h1>星潮魔導姬</h1>
+      <p class="lede">這不是影片，是即時繪製的 3D 全息卡牌。在卡片上拖曳改變角度，視差和鐳射箔的反光會跟著變。</p>
+    </header>
+
+    <section aria-labelledby="h-film">
+      <h2 id="h-film">展示影片</h2>
+      <div class="row">
+        <button id="play" class="primary" type="button">暫停</button>
+        <button id="sound" type="button" aria-pressed="false">開啟配樂</button>
+        <span id="time">0.0 / 15 s</span>
+      </div>
+      <input id="seek" type="range" min="0" max="15" step="0.01" value="0" aria-label="影片時間">
+    </section>
+
+    <section aria-labelledby="h-free">
+      <h2 id="h-free">自己動手</h2>
+      <label class="field" for="zoom"><span>拉近拉遠</span><input id="zoom" type="range" min="0.5" max="3" step="0.01" value="1"></label>
+      <label class="field" for="explode"><span>分層展開</span><input id="explode" type="range" min="0" max="1" step="0.005" value="0"></label>
+      <label class="field" for="foil"><span>鐳射箔強度</span><input id="foil" type="range" min="0" max="2.5" step="0.01" value="1"></label>
+      <div class="row"><button id="resetView" type="button">重設視角與位置</button></div>
+      <p class="note">拖曳旋轉，滾輪或雙指縮放。按住 Shift 拖曳（或雙指拖曳）可移動位置，在卡片上連按兩下回到預設視角。</p>
+    </section>
+
+    <section aria-labelledby="h-layers">
+      <h2 id="h-layers">七個圖層</h2>
+      <div id="layers"></div>
+      <div class="row"><button id="reset" type="button">全部重設</button></div>
+    </section>
+
+    <p class="note">由上到下是卡片實際的堆疊順序。取消勾選可以單獨關掉某一層，例如只關掉鐳射箔來比較差別。</p>
+  </aside>
+</main>
+<script>
+// Fragment shader: ray-casts the card as a stack of parallel sheets.
+// Scene layers: 0 base art, 1 holo foil, 2 glow FX, 3 frame, 4 character, 5 text, 6 gloss.
+// Texture array slices: 0 base, 1 fx, 2 frame, 3 char, 4 text.
+window.VERT_SRC = `#version 300 es
+in vec2 aPos;
+void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+window.FRAG_SRC = `#version 300 es
+precision highp float;
+precision highp sampler2DArray;
+uniform sampler2DArray uCol, uAux;
+uniform sampler2D uBack;
+uniform vec2 uRes;
+uniform float uTime;
+uniform mat3 uRot;
+uniform vec3 uPos, uCam, uLook;
+uniform float uFov;
+uniform float uZ[7], uE[7], uOn[7];
+uniform float uSheet, uFoil, uFlash, uFade, uDof, uFocus, uSlabZ, uGlow, uRelief;
+out vec4 fragColor;
+
+const vec2 HS = vec2(0.7142857, 1.0);
+const float RAD = 0.0743;
+float gPix;
+
+float hash11(float p){ p = fract(p*0.1031); p *= p+33.33; p *= p+p; return fract(p); }
+float hash21(vec2 p){ vec3 p3 = fract(vec3(p.xyx)*0.1031); p3 += dot(p3, p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
+vec2 hash22(vec2 p){ vec3 p3 = fract(vec3(p.xyx)*vec3(0.1031,0.1030,0.0973)); p3 += dot(p3, p3.yzx+33.33); return fract((p3.xx+p3.yz)*p3.zy); }
+float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(hash21(i),hash21(i+vec2(1,0)),f.x), mix(hash21(i+vec2(0,1)),hash21(i+vec2(1,1)),f.x), f.y); }
+float sdRR(vec2 p, vec2 b, float r){ vec2 q=abs(p)-b+r; return length(max(q,0.0))+min(max(q.x,q.y),0.0)-r; }
+float inbox(vec2 uv){ vec2 s = step(vec2(0.0),uv)*step(uv,vec2(1.0)); return s.x*s.y; }
+
+// visible spectrum, x: 0 violet .. 1 red, black outside
+vec3 spectral(float x){
+  float w = smoothstep(0.0,0.06,x)*smoothstep(1.0,0.93,x);
+  float h = 0.86*(1.0-x);
+  vec3 c = clamp(abs(fract(h+vec3(0.0,2.0/3.0,1.0/3.0))*6.0-3.0)-1.0,0.0,1.0);
+  return c*c*(3.0-2.0*c)*w;
+}
+// diffraction grating: s = projection of (light+view) on the grating axis; sums three orders
+vec3 grating(float s, float g){
+  s = abs(s)*g;
+  return spectral((s-0.38)/0.32) + spectral((s*0.5-0.38)/0.32)*0.8 + spectral((s/3.0-0.38)/0.32)*0.6;
+}
+
+struct Hit { vec2 q; vec2 uv; float t; float px; float sheet; vec3 P; };
+Hit hitPlane(vec3 o, vec3 d, float z, float over){
+  Hit h; h.t = (z-o.z)/d.z; h.q = o.xy + h.t*d.xy; h.uv = h.q/(2.0*HS)+0.5; h.px = max(h.t,0.0)*gPix;
+  h.sheet = smoothstep(h.px, -h.px, sdRR(h.q, HS*(1.0+over), RAD*(1.0+over)))*step(0.0,h.t);
+  h.P = vec3(h.q, z); return h;
+}
+
+// normal from the relief map; stepPx = sampling distance in texels, lod = mip level (smooths 8-bit steps)
+vec3 reliefNormal(vec2 uv, float layer, float nz, float stepPx, float lod){
+  vec2 ex = vec2(stepPx/1500.0, 0.0), ey = vec2(0.0, stepPx/2100.0);
+  float hx = textureLod(uAux, vec3(uv+ex,layer), lod).g - textureLod(uAux, vec3(uv-ex,layer), lod).g;
+  float hy = textureLod(uAux, vec3(uv+ey,layer), lod).g - textureLod(uAux, vec3(uv-ey,layer), lod).g;
+  return normalize(vec3(-hx, -hy, nz));
+}
+
+// holographic foil seen at card position q (card units), M = foil mask
+vec3 foil(vec2 q, float M, vec3 La, vec3 Lb, vec3 V){
+  // prism facets
+  vec2 g = q*8.5; vec2 gi = floor(g), gf = fract(g);
+  float d1 = 9.0, d2 = 9.0; vec2 id = vec2(0.0);
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){
+    vec2 o = vec2(float(i),float(j)); vec2 r = o + hash22(gi+o) - gf; float dd = dot(r,r);
+    if(dd<d1){ d2=d1; d1=dd; id=gi+o; } else if(dd<d2){ d2=dd; }
+  }
+  float ang = hash21(id+3.7)*6.2831853; vec2 tp = vec2(cos(ang), sin(ang));
+  float fb = 0.45+0.55*hash21(id+9.1);
+  float fedge = smoothstep(0.0,0.09,sqrt(d2)-sqrt(d1));
+  // radial (compact-disc) grating around the magic circle
+  vec2 rc = q - vec2(0.0,0.13); float rl = length(rc); vec2 tr = rc/max(rl,1e-3);
+  // glitter flakes
+  vec2 gg = q*115.0; vec2 gid = floor(gg); vec2 gfr = fract(gg)-0.5-(hash22(gid+1.3)-0.5)*0.5;
+  vec2 gn = (hash22(gid+5.1)-0.5)*0.95; float gdisc = smoothstep(0.34,0.08,length(gfr));
+  float gseed = hash21(gid+2.2);
+  vec2 tl = normalize(vec2(1.0,0.35));
+  float wide = 0.26+0.74*M, lines = smoothstep(0.5,0.95,M);
+  vec3 acc = vec3(0.0);
+  for(int k=0;k<2;k++){
+    vec3 L = k==0 ? La : Lb; float w = k==0 ? 1.0 : 0.55;
+    vec3 Hv = L+V; vec3 Hn = normalize(Hv);
+    vec3 lin = grating(dot(Hv.xy,tl) + q.x*0.10, 1.75);
+    vec3 pri = grating(dot(Hv.xy,tp), 2.1)*fb*mix(0.45,1.0,fedge);
+    vec3 rad = grating(dot(Hv.xy,tr), 1.9);
+    vec2 dn = Hn.xy-gn; float gl = exp(-dot(dn,dn)/0.0045)*gdisc;
+    vec3 glc = mix(vec3(1.0), spectral(gseed)*1.6+0.25, 0.55)*gl;
+    acc += w*((lin*0.40 + pri*0.42)*wide + rad*(0.10+1.15*lines) + glc*(0.5+0.9*M)*1.5);
+  }
+  return acc;
+}
+
+// gold leaf: darker when unlit, hot specular, faint rainbow sheen. base is premultiplied by alpha a.
+vec3 metal(vec3 base, float a, float g, vec3 n, vec3 La, vec3 Lb, vec3 V, vec2 q){
+  vec3 Ha = normalize(La+V), Hb = normalize(Lb+V);
+  float sa = pow(max(dot(n,Ha),0.0),40.0), sb = pow(max(dot(n,Hb),0.0),26.0);
+  float da = max(dot(n,La),0.0);
+  vec3 c = base*(0.66+0.50*da);
+  c += vec3(1.0,0.87,0.58)*(sa*1.25+sb*0.45)*a;
+  c += grating(dot((La+V).xy,vec2(0.8,0.6))+q.x*0.2,1.7)*(0.10+0.5*sa)*a;
+  return mix(base, c, g);
+}
+
+vec3 backdrop(vec2 ndc){
+  float r = length(ndc*vec2(1.0,0.72));
+  vec3 c = mix(vec3(0.020,0.058,0.088), vec3(0.003,0.007,0.014), smoothstep(0.0,1.45,r));
+  c += vec3(0.02,0.13,0.16)*exp(-pow(length(ndc-vec2(0.0,0.12))*1.15,2.0))*0.75;
+  // slow light shafts from above
+  float sh = vnoise(vec2(ndc.x*5.0 + ndc.y*1.3 + uTime*0.05, 0.3))*smoothstep(-1.0,1.0,ndc.y);
+  c += vec3(0.03,0.10,0.13)*sh*sh*0.5;
+  for(int i=0;i<34;i++){
+    float fi = float(i); vec2 h = hash22(vec2(fi,7.3)); float z = hash11(fi*3.7);
+    vec2 p = vec2((h.x-0.5)*1.5, fract(h.y+uTime*(0.008+0.018*z))*2.6-1.3) + 0.03*vec2(sin(uTime*0.4+fi), cos(uTime*0.3+fi*1.7));
+    float rad = mix(0.006,0.034,z*z); float dd = length(ndc-p);
+    vec3 tint = mix(vec3(0.3,0.9,1.0), vec3(1.0,0.85,0.55), step(0.7,hash11(fi*9.1)));
+    c += tint*smoothstep(rad,rad*0.5,dd)*(0.04+0.10*(1.0-z))*(0.6+0.4*sin(uTime*1.3+fi*2.0));
+  }
+  return c;
+}
+
+vec3 pane(vec3 col, Hit h, float e){
+  float sd = sdRR(h.q,HS,RAD);
+  float line = smoothstep(2.6*h.px, 0.6*h.px, abs(sd+1.6*h.px))*step(0.0,h.t);
+  col = mix(col, vec3(0.70,0.92,1.0), 0.035*h.sheet*e);
+  return col + vec3(0.70,0.95,1.0)*line*0.6*e;
+}
+
+void main(){
+  vec2 ndc = (gl_FragCoord.xy*2.0-uRes)/uRes.y;
+  vec3 fw = normalize(uLook-uCam); vec3 rt = normalize(cross(fw,vec3(0.0,1.0,0.0))); vec3 up = cross(rt,fw);
+  vec3 D = normalize(fw + uFov*(ndc.x*rt+ndc.y*up));
+  mat3 RT = transpose(uRot);
+  vec3 o = RT*(uCam-uPos); vec3 d = RT*D;
+  vec3 L1 = RT*(vec3(-1.7,2.3,3.6)-uPos), L2 = RT*(vec3(2.2,-1.2,3.0)-uPos);
+  gPix = uFov*2.0/uRes.y*1.2;
+  vec3 col = backdrop(ndc);
+
+  if(d.z < -1e-4){
+    Hit hA = hitPlane(o,d,uZ[3],0.0);
+    float sdA = sdRR(hA.q,HS,RAD);
+    float apert = hA.sheet;
+    col += vec3(0.08,0.55,0.62)*exp(-max(sdA,0.0)*2.4)*0.20*uGlow*step(0.0,hA.t);
+    // card stock (gives the card a thin edge)
+    Hit hs = hitPlane(o,d,uSlabZ,0.0);
+    col = mix(col, vec3(0.025,0.035,0.05), hs.sheet);
+
+    // ---- 0 base art
+    Hit h0 = hitPlane(o,d,uZ[0],0.25*(1.0-uE[0]));
+    float m0 = h0.sheet*mix(apert,1.0,uE[0])*uOn[0];
+    vec3 c0 = texture(uCol, vec3(h0.uv,0.0), uDof*abs(uZ[0]-uFocus)*9.0).rgb;
+    vec3 a0 = texture(uAux, vec3(h0.uv,0.0)).rgb;
+    c0 += vec3(0.8,0.95,1.0)*a0.r*a0.r*0.25*(0.5+0.5*sin(uTime*2.3+h0.q.x*37.0+h0.q.y*23.0));
+    vec3 Lc0 = normalize(L1-h0.P);
+    float dz0 = uZ[4]-uZ[0];
+    vec2 uvS = (h0.q + Lc0.xy/Lc0.z*dz0)/(2.0*HS)+0.5;
+    float sh0 = textureLod(uCol, vec3(uvS,3.0), min(3.2+4.0*dz0,7.5)).a*inbox(uvS)*uOn[4]/(1.0+2.0*dz0);
+    c0 *= 1.0-0.55*sh0;
+    col = mix(col, c0, m0);
+
+    // ---- 1 holo foil
+    Hit h1 = hitPlane(o,d,uZ[1],0.25*(1.0-uE[1]));
+    float m1 = h1.sheet*mix(apert,1.0,uE[1])*uOn[1];
+    float M = texture(uAux, vec3(h1.uv,0.0)).r;
+    vec3 V1 = normalize(o-h1.P);
+    vec3 F = foil(h1.q, M, normalize(L1-h1.P), normalize(L2-h1.P), V1);
+    col += F*uFoil*m1*(1.0-0.5*sh0*(1.0-uE[1]));
+    col = pane(col, h1, uE[1]*uSheet*uOn[1]);
+
+    // ---- 2 glow FX
+    Hit h2 = hitPlane(o,d,uZ[2],0.25*(1.0-uE[2]));
+    float m2 = h2.sheet*mix(apert,1.0,uE[2])*uOn[2];
+    vec3 c2 = texture(uCol, vec3(h2.uv,1.0), uDof*abs(uZ[2]-uFocus)*6.0).rgb;
+    float occ = texture(uAux, vec3(h2.uv,1.0)).b;
+    float flow = 0.78+0.5*vnoise(h2.q*5.0+vec2(uTime*0.6,-uTime*0.9));
+    col = col*(1.0-0.45*occ*m2) + c2*flow*1.3*m2;
+    col = pane(col, h2, uE[2]*uSheet*uOn[2]);
+
+    // ---- 3 frame
+    Hit h3 = hitPlane(o,d,uZ[3],0.0);
+    float m3 = h3.sheet*uOn[3];
+    vec4 c3 = texture(uCol, vec3(h3.uv,2.0));
+    float g3 = texture(uAux, vec3(h3.uv,2.0)).r;
+    vec3 V3 = normalize(o-h3.P); vec3 La3 = normalize(L1-h3.P), Lb3 = normalize(L2-h3.P);
+    c3.rgb = metal(c3.rgb, c3.a, g3, reliefNormal(h3.uv,2.0,0.10,2.5,0.0), La3, Lb3, V3, h3.q);
+    float dz3 = uZ[4]-uZ[3];
+    vec2 uvS3 = (h3.q + La3.xy/La3.z*dz3)/(2.0*HS)+0.5;
+    float sh3 = textureLod(uCol, vec3(uvS3,3.0), min(2.5+4.0*dz3,7.5)).a*inbox(uvS3)*uOn[4]/(1.0+2.0*dz3);
+    c3.rgb *= 1.0-0.5*sh3;
+    col = col*(1.0-c3.a*m3) + c3.rgb*m3;
+    col = pane(col, h3, uE[3]*uSheet*uOn[3]);
+
+    // ---- 4 character (relief parallax inside the layer)
+    Hit h4 = hitPlane(o,d,uZ[4],0.0);
+    float m4 = h4.sheet*uOn[4];
+    vec2 par = d.xy/d.z/(2.0*HS)*2.0*uRelief;
+    vec2 uv4 = h4.uv;
+    for(int k=0;k<3;k++){ float hh = textureLod(uAux, vec3(uv4,3.0), 2.0).g; uv4 = h4.uv + par*(hh-0.5); }
+    vec4 c4 = texture(uCol, vec3(uv4,3.0), uDof*abs(uZ[4]-uFocus)*9.0);
+    vec3 a4 = texture(uAux, vec3(uv4,3.0)).rgb;
+    vec3 n4 = reliefNormal(uv4,3.0,0.10,14.0,3.0);
+    vec3 V4 = normalize(o-h4.P); vec3 La4 = normalize(L1-h4.P), Lb4 = normalize(L2-h4.P);
+    c4.rgb *= 1.0+0.42*(dot(n4,La4)-La4.z);
+    c4.rgb += vec3(1.0)*pow(max(dot(n4,normalize(La4+V4)),0.0),34.0)*0.16*c4.a;
+    c4.rgb = metal(c4.rgb, c4.a, a4.r, n4, La4, Lb4, V4, h4.q);
+    c4.rgb += vec3(0.55,1.0,1.0)*a4.b*c4.a*(0.20+0.20*sin(uTime*3.1));
+    col = col*(1.0-c4.a*m4) + c4.rgb*m4;
+    col = pane(col, h4, uE[4]*uSheet*uOn[4]);
+
+    // ---- 5 text
+    Hit h5 = hitPlane(o,d,uZ[5],0.0);
+    float m5 = h5.sheet*uOn[5];
+    vec4 c5 = texture(uCol, vec3(h5.uv,4.0));
+    float g5 = texture(uAux, vec3(h5.uv,4.0)).r;
+    c5.rgb = metal(c5.rgb, c5.a, g5, reliefNormal(h5.uv,4.0,0.12,2.5,0.0), normalize(L1-h5.P), normalize(L2-h5.P), normalize(o-h5.P), h5.q);
+    col = col*(1.0-c5.a*m5) + c5.rgb*m5;
+    col = pane(col, h5, uE[5]*uSheet*uOn[5]);
+
+    // ---- 6 gloss
+    Hit h6 = hitPlane(o,d,uZ[6],0.0);
+    float m6 = h6.sheet*uOn[6];
+    vec3 V6 = normalize(o-h6.P);
+    vec3 Hn = normalize(normalize(L1-h6.P)+V6), Hm = normalize(normalize(L2-h6.P)+V6);
+    vec2 ax = normalize(vec2(0.85,0.52)); float ga = dot(Hn.xy,ax), gb = dot(Hn.xy,vec2(-ax.y,ax.x));
+    float glare = exp(-(ga*ga/0.0030+gb*gb/0.10))*0.50 + exp(-dot(Hn.xy,Hn.xy)/0.0045)*0.45 + exp(-dot(Hm.xy,Hm.xy)/0.006)*0.18;
+    float fres = pow(1.0-max(V6.z,0.0),3.0);
+    col += (vec3(1.0,0.98,0.94)*glare + vec3(0.45,0.8,1.0)*fres*0.30)*m6;
+    float sd6 = sdRR(h6.q,HS,RAD);
+    col += vec3(0.9,0.96,1.0)*smoothstep(3.0*h6.px,0.0,abs(sd6+2.0*h6.px))*0.22*m6*step(0.0,h6.t);
+    // when pulled apart, give the gloss sheet its own reflection streaks so it reads as a layer
+    float gd = h6.q.x*0.75+h6.q.y*0.55;
+    col += vec3(0.8,0.95,1.0)*(exp(-pow((gd-0.15)/0.20,2.0))*0.10+exp(-pow((gd+0.52)/0.07,2.0))*0.07)*uE[6]*uSheet*m6;
+    col = pane(col, h6, uE[6]*uSheet*uOn[6]);
+  } else if(d.z > 1e-4){
+    // card seen from behind
+    Hit hf = hitPlane(o,d,uZ[3],0.0);
+    col = mix(col, vec3(0.025,0.035,0.05), hf.sheet);
+    Hit hb = hitPlane(o,d,uSlabZ,0.0);
+    vec2 uvb = vec2(1.0-hb.uv.x, hb.uv.y);
+    vec3 cb = texture(uBack, uvb).rgb;
+    float gm = smoothstep(0.10,0.45,cb.r-cb.b);
+    vec3 Vb = normalize(o-hb.P); Vb.z = -Vb.z;
+    vec3 Lb1 = normalize(L1-hb.P); Lb1.z = abs(Lb1.z);
+    vec3 Hb = normalize(Lb1+Vb);
+    cb += grating(dot((Lb1+Vb).xy,vec2(0.8,0.6))+hb.q.x*0.2,1.8)*gm*0.55;
+    cb += vec3(1.0,0.9,0.7)*pow(max(Hb.z,0.0),50.0)*(0.25+0.9*gm);
+    col = mix(col, cb, hb.sheet);
+  }
+
+  // large out-of-focus dust in front of the card
+  for(int i=0;i<5;i++){
+    float fi = float(i)+50.0; vec2 h = hash22(vec2(fi,2.9));
+    vec2 p = vec2((h.x-0.5)*1.3, fract(h.y+uTime*0.022)*2.8-1.4);
+    float rad = 0.07+0.07*hash11(fi);
+    col += vec3(0.35,0.85,1.0)*smoothstep(rad,rad*0.6,length(ndc-p))*0.035;
+  }
+  col *= 1.0-0.34*pow(length(ndc*vec2(1.1,0.62)),2.4);
+  col += uFlash*vec3(0.75,0.95,1.0)*(0.30+0.70*exp(-dot(ndc,ndc)*1.2));
+  col *= uFade;
+  col = mix(col, 0.75+0.25*(1.0-exp(-(col-0.75)/0.25)), step(0.75,col));
+  col += (hash21(gl_FragCoord.xy+fract(uTime)*61.0)-0.5)*0.012;
+  fragColor = vec4(col,1.0);
+}`;
+
+</script>
+<script>
+// Holo card renderer: timeline, interactive viewer and frame capture.
+(() => {
+  const OUT_W = 1080, OUT_H = 1920, FPS = 30, DUR = 15.0, NL = 7;
+  const HS = [5 / 7, 1.0], FOV = 0.30;
+  const ZC = [-0.15, -0.148, -0.08, 0.0, 0.03, 0.05, 0.052];   // collapsed depth of each layer
+  const SPREAD = 0.27;                                          // exploded spacing
+  const LABELS = [
+    ['BASE ART', '背景底圖'], ['HOLO FOIL', '鐳射箔'], ['MAGIC FX', '魔法光效'], ['FRAME', '金箔卡框'],
+    ['CHARACTER', '角色主體'], ['TEXT', '卡面文字'], ['GLOSS', '亮面光澤'],
+  ];
+  const F_EN = '"Barlow", Bahnschrift, "Segoe UI", sans-serif';
+  const F_ZH = '"Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif';
+  const F_MONO = 'ui-monospace, Consolas, "SF Mono", monospace';
+  const params = new URLSearchParams(location.search);
+  const rad = (d) => d * Math.PI / 180;
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+  const smooth = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+  const easeIO = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const bump = (t, c, w) => Math.exp(-Math.pow((t - c) / w, 2));
+
+  // ---------- timeline ----------
+  function layerState(E) {
+    const e = [], z = [];
+    for (let i = 0; i < NL; i++) {
+      const delay = (1 - Math.abs(i - 3) / 3) * 0.3;
+      const ei = easeIO(clamp01((E - delay) / 0.7));
+      e.push(ei); z.push(ZC[i] + ((i - 3) * SPREAD - ZC[i]) * ei);
+    }
+    return { e, z };
+  }
+
+  function timeline(t) {
+    const s = { yaw: 0, pitch: 0, roll: 0, pos: [0, 0, 0], cam: 5.4, look: [0, 0, 0], E: 0, foil: 1, flash: 0, fade: 1,
+      dof: 0.45, focus: 0.03, sheet: 0, glow: 1, relief: 0.03, caption: null, captionA: 0, labelA: new Array(NL).fill(0) };
+    // A  0.0-2.5  reveal: the card spins up from below and settles
+    s.yaw += rad(-540) * Math.exp(-2.7 * t) * Math.cos(1.65 * t);
+    s.pitch += rad(14) * Math.exp(-2.4 * t) * Math.sin(4.6 * t);
+    s.pos[1] += -2.8 * Math.exp(-3.6 * t) * Math.cos(2.1 * t);
+    s.cam += 1.6 * Math.exp(-2.6 * t);
+    s.flash += 0.5 * bump(t, 0.95, 0.16);
+    s.fade *= smooth(0.0, 0.45, t);
+    // B  2.5-5.0  depth: push in on the character, slow tilt sweep
+    const kB = smooth(2.3, 3.1, t) * (1 - smooth(4.5, 5.2, t));
+    const uB = (t - 2.5) / 2.5;
+    s.yaw += kB * rad(-19) * Math.cos(Math.PI * uB);
+    s.pitch += kB * rad(7) * Math.sin(2 * Math.PI * uB);
+    s.cam -= kB * 2.35; s.look[1] += kB * 0.29; s.look[0] += kB * 0.04;
+    s.dof += kB * 0.9;
+    // C  5.0-10.0  layers: lay the card back and pull the sheets apart
+    const aC = smooth(5.0, 6.0, t) * (1 - smooth(9.0, 10.0, t));
+    s.pitch += aC * rad(-50);
+    s.roll += aC * rad(-14);
+    s.yaw += aC * (rad(-5) + rad(10) * (t - 5) / 5);
+    s.cam += aC * 2.75; s.look[0] += aC * 0.26; s.look[1] += aC * 0.10;
+    s.E = easeIO(clamp01((t - 5.25) / 1.45)) * (1 - easeIO(clamp01((t - 8.95) / 1.0)));
+    s.sheet = s.E; s.dof *= 1 - aC;
+    for (let i = 0; i < NL; i++) s.labelA[i] = smooth(6.25 + 0.16 * i, 6.5 + 0.16 * i, t) * (1 - smooth(8.6, 8.95, t));
+    // D  10.0-12.5  hero tilt with the foil running across
+    const wD = smooth(9.7, 10.3, t) * (1 - smooth(12.2, 12.7, t));
+    const uD = (t - 10) / 2.5;
+    s.yaw += wD * rad(25) * Math.sin(2 * Math.PI * uD);
+    s.pitch += wD * rad(-10) * Math.cos(2 * Math.PI * uD);
+    s.flash += 0.45 * bump(t, 10.02, 0.14);
+    if (t >= 10) s.foil += 0.6 * Math.exp(-(t - 10) * 1.4);
+    // E  12.5-15.0  outro: one full spin, settle, fade
+    s.yaw += rad(360) * easeIO(clamp01((t - 12.5) / 1.3));
+    s.flash += 0.32 * bump(t, 13.72, 0.15);
+    const wE = smooth(13.6, 14.2, t);
+    s.yaw += wE * rad(-9) * Math.sin((t - 13.6) * 1.3);
+    s.pitch += wE * rad(-5) * Math.sin((t - 13.6) * 1.9);
+    s.cam -= 0.5 * smooth(12.5, 15.0, t);
+    s.fade *= 1 - smooth(14.35, 14.95, t);
+    // captions
+    const caps = [[2.85, 4.85, 'DEPTH', '景深視差'], [5.7, 9.2, 'LAYERS', '分層結構'], [10.25, 12.3, 'HOLO FOIL', '鐳射箔']];
+    for (const [a, b, en, zh] of caps) {
+      const al = smooth(a, a + 0.35, t) * (1 - smooth(b - 0.35, b, t));
+      if (al > 0.001) { s.caption = [en, zh]; s.captionA = al; }
+    }
+    return s;
+  }
+
+  // ---------- math ----------
+  function rotation(yaw, pitch, roll) {   // row-major Ry * Rx * Rz
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cx = Math.cos(pitch), sx = Math.sin(pitch), cz = Math.cos(roll), sz = Math.sin(roll);
+    const Ry = [cy, 0, sy, 0, 1, 0, -sy, 0, cy], Rx = [1, 0, 0, 0, cx, -sx, 0, sx, cx], Rz = [cz, -sz, 0, sz, cz, 0, 0, 0, 1];
+    const mul = (a, b) => { const r = new Array(9); for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) r[i * 3 + j] = a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j]; return r; };
+    return mul(mul(Ry, Rx), Rz);
+  }
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]); return [a[0] / l, a[1] / l, a[2] / l]; };
+
+  // ---------- GL ----------
+  const glc = document.createElement('canvas');
+  const gl = glc.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+  const out = document.getElementById('stage');
+  out.width = OUT_W; out.height = OUT_H;
+  const ctx = out.getContext('2d');
+  let prog, U = {}, ready = false, manifest = null;
+
+  function compile(type, src) {
+    const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh));
+    return sh;
+  }
+  const loadImage = (src) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('image ' + src)); im.src = src; });
+
+  async function init() {
+    manifest = await (await fetch('assets/manifest.json')).json();
+    if (manifest.poster) document.getElementById('stageBox').style.backgroundImage = `url(assets/${manifest.poster})`;   // shown until the first frame
+    if (!gl) throw new Error('WebGL2 not available');
+    prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, window.VERT_SRC));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, window.FRAG_SRC));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+    for (const n of ['uCol', 'uAux', 'uBack', 'uRes', 'uTime', 'uRot', 'uPos', 'uCam', 'uLook', 'uFov', 'uZ', 'uE', 'uOn', 'uSheet', 'uFoil', 'uFlash', 'uFade', 'uDof', 'uFocus', 'uSlabZ', 'uGlow', 'uRelief']) U[n] = gl.getUniformLocation(prog, n);
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'aPos'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    const names = manifest.layers, ext = manifest.ext || 'png';
+    const srcs = [...names.map((n) => `assets/${n}.${ext}`), ...names.map((n) => `assets/${n}_aux.${ext}`), 'assets/' + manifest.back];
+    let got = 0;
+    const loadEl = document.getElementById('loading');
+    const raw = await Promise.all(srcs.map((src) => loadImage(src).then((im) => { got++; if (loadEl) loadEl.textContent = `載入素材 ${got}/${srcs.length}`; return im; })));
+    // phones and low-memory devices get half-size textures (the full set needs about 170 MB of GPU memory)
+    const small = !params.has('capture') && ((navigator.deviceMemory && navigator.deviceMemory <= 4) || matchMedia('(pointer: coarse)').matches);
+    const TS = small ? 0.5 : 1;
+    const W = Math.round(manifest.size[0] * TS), H = Math.round(manifest.size[1] * TS);
+    const imgs = raw.slice(0, names.length * 2).map((im) => {
+      if (TS === 1) return im;
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const cx = c.getContext('2d'); cx.imageSmoothingQuality = 'high'; cx.drawImage(im, 0, 0, W, H);
+      return c;
+    });
+    imgs.push(raw[raw.length - 1]);
+    view.rs = small ? 0.75 : 1;
+    const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    const levels = Math.floor(Math.log2(Math.max(W, H))) + 1;
+    const makeArray = (unit, list, premult) => {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D_ARRAY, tex);
+      gl.texStorage3D(gl.TEXTURE_2D_ARRAY, levels, gl.RGBA8, W, H, list.length);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premult);
+      list.forEach((im, i) => gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, W, H, 1, gl.RGBA, gl.UNSIGNED_BYTE, im));
+      gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+      if (aniso) gl.texParameterf(gl.TEXTURE_2D_ARRAY, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+    };
+    makeArray(0, imgs.slice(0, names.length), true);
+    makeArray(1, imgs.slice(names.length, names.length * 2), false);
+    gl.activeTexture(gl.TEXTURE2);
+    const back = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, back);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imgs[imgs.length - 1]);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8);
+    gl.uniform1i(U.uCol, 0); gl.uniform1i(U.uAux, 1); gl.uniform1i(U.uBack, 2);
+    ready = true;
+  }
+
+  // ---------- one frame ----------
+  const layerOn = new Array(NL).fill(1);
+  function renderFrame(s, time, ss) {
+    const w = Math.round(OUT_W * ss), h = Math.round(OUT_H * ss);
+    if (glc.width !== w || glc.height !== h) { glc.width = w; glc.height = h; }
+    gl.viewport(0, 0, w, h);
+    const R = rotation(s.yaw, s.pitch, s.roll);
+    const cam = [s.look[0], s.look[1], s.look[2] + s.cam];
+    const ls = s.layers || layerState(s.E);
+    gl.uniform2f(U.uRes, w, h);
+    gl.uniform1f(U.uTime, time);
+    gl.uniformMatrix3fv(U.uRot, false, new Float32Array([R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]]));
+    gl.uniform3fv(U.uPos, s.pos); gl.uniform3fv(U.uCam, cam); gl.uniform3fv(U.uLook, s.look);
+    gl.uniform1f(U.uFov, FOV);
+    gl.uniform1fv(U.uZ, new Float32Array(ls.z)); gl.uniform1fv(U.uE, new Float32Array(ls.e)); gl.uniform1fv(U.uOn, new Float32Array(layerOn));
+    gl.uniform1f(U.uSheet, s.sheet); gl.uniform1f(U.uFoil, s.foil); gl.uniform1f(U.uFlash, s.flash); gl.uniform1f(U.uFade, s.fade);
+    gl.uniform1f(U.uDof, s.dof); gl.uniform1f(U.uFocus, s.focus); gl.uniform1f(U.uGlow, s.glow); gl.uniform1f(U.uRelief, s.relief);
+    gl.uniform1f(U.uSlabZ, ls.z[0] * ls.e[0] + (-0.02) * (1 - ls.e[0]) - 0.02 * ls.e[0]);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(glc, 0, 0, OUT_W, OUT_H);
+
+    // 2D overlay: layer labels and caption
+    const fw = norm(sub(s.look, cam)), rt = norm(cross(fw, [0, 1, 0])), up = cross(rt, fw);
+    const project = (p) => {
+      const P = [s.pos[0] + R[0] * p[0] + R[1] * p[1] + R[2] * p[2], s.pos[1] + R[3] * p[0] + R[4] * p[1] + R[5] * p[2], s.pos[2] + R[6] * p[0] + R[7] * p[1] + R[8] * p[2]];
+      const v = sub(P, cam), dz = dot(v, fw);
+      return [(dot(v, rt) / (dz * FOV) * OUT_H + OUT_W) / 2, (1 - dot(v, up) / (dz * FOV)) * OUT_H / 2];
+    };
+    if (s.labelA.some((a) => a > 0.003)) {
+      const pts = []; for (let i = 0; i < NL; i++) pts.push(project([HS[0] * 0.985, 0.88, ls.z[i]]));
+      const LX = OUT_W * 0.80; const ys = pts.map((p) => p[1]);
+      for (let i = NL - 2; i >= 0; i--) ys[i] = Math.max(ys[i], ys[i + 1] + 76);   // keep labels apart (layer 6 is on top)
+      ctx.save(); ctx.textBaseline = 'middle';
+      for (let i = 0; i < NL; i++) {
+        const a = s.labelA[i] * s.fade * layerOn[i]; if (a < 0.003) continue;
+        const [ax, ay] = pts[i], y = ys[i], slide = (1 - a) * 18;
+        ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(190,240,255,0.75)'; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(Math.max(ax, LX - 34), y); ctx.lineTo(LX - 10, y); ctx.stroke();
+        ctx.fillStyle = '#dff8ff'; ctx.beginPath(); ctx.arc(ax, ay, 4.2, 0, 7); ctx.fill();
+        ctx.shadowColor = 'rgba(0,10,20,0.9)'; ctx.shadowBlur = 8;
+        ctx.font = '700 15px ' + F_MONO; ctx.fillStyle = '#f3cf78'; ctx.letterSpacing = '1px';
+        ctx.fillText('0' + (i + 1), LX + slide, y - 13);
+        ctx.font = '600 24px ' + F_EN; ctx.fillStyle = '#ffffff'; ctx.letterSpacing = '2px';
+        ctx.fillText(LABELS[i][0], LX + 30 + slide, y - 12);
+        ctx.font = '21px ' + F_ZH; ctx.fillStyle = 'rgba(190,236,246,0.92)'; ctx.letterSpacing = '2px';
+        ctx.fillText(LABELS[i][1], LX + 30 + slide, y + 16);
+        ctx.shadowBlur = 0;
+      }
+      ctx.restore();
+    }
+    if (s.caption && s.captionA > 0.003) {
+      ctx.save(); ctx.globalAlpha = s.captionA * s.fade;
+      const grd = ctx.createLinearGradient(0, OUT_H * 0.84, 0, OUT_H);
+      grd.addColorStop(0, 'rgba(1,7,13,0)'); grd.addColorStop(0.55, 'rgba(1,7,13,0.62)'); grd.addColorStop(1, 'rgba(1,7,13,0.8)');
+      ctx.fillStyle = grd; ctx.fillRect(0, OUT_H * 0.84, OUT_W, OUT_H * 0.16);
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.shadowColor = 'rgba(0,10,20,0.9)'; ctx.shadowBlur = 10;
+      const y = OUT_H * 0.936 + (1 - s.captionA) * 10;
+      ctx.font = '600 27px ' + F_EN; ctx.letterSpacing = '9px';
+      const w1 = ctx.measureText(s.caption[0]).width;
+      ctx.font = '25px ' + F_ZH; ctx.letterSpacing = '6px';
+      const w2 = ctx.measureText(s.caption[1]).width, gap = 44, x0 = (OUT_W - (w1 + gap + w2)) / 2;
+      ctx.font = '600 27px ' + F_EN; ctx.letterSpacing = '9px'; ctx.fillStyle = '#ffffff';
+      ctx.fillText(s.caption[0], x0, y);
+      ctx.font = '25px ' + F_ZH; ctx.letterSpacing = '6px'; ctx.fillStyle = '#f3d68a';
+      ctx.fillText(s.caption[1], x0 + w1 + gap, y);
+      ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(190,240,255,0.8)';
+      ctx.fillRect(x0 + w1 + gap / 2 - 5, y - 13, 1.6, 26);
+      ctx.restore();
+    }
+  }
+
+  // ---------- capture ----------
+  async function capture(times, dir, ss) {
+    document.body.classList.add('capturing');
+    await fetch('/begin?dir=' + dir, { method: 'POST' });
+    for (let i = 0; i < times.length; i++) {
+      renderFrame(timeline(times[i]), times[i], ss);
+      // toDataURL is synchronous, so it keeps full speed when the tab is in the background (toBlob gets throttled there)
+      const b64 = atob(out.toDataURL('image/jpeg', 0.95).split(',')[1]);
+      const bytes = new Uint8Array(b64.length);
+      for (let k = 0; k < b64.length; k++) bytes[k] = b64.charCodeAt(k);
+      await fetch(`/frame?dir=${dir}&i=${i}`, { method: 'POST', body: bytes });
+      document.title = `capture ${i + 1}/${times.length}`;
+      window.__cap = { i: i + 1, n: times.length, done: false };
+    }
+    await fetch('/done?dir=' + dir, { method: 'POST', body: JSON.stringify({ frames: times.length, fps: FPS, width: OUT_W, height: OUT_H }) });
+    window.__cap = { i: times.length, n: times.length, done: true };
+    document.title = 'capture done';
+  }
+
+  // ---------- interactive viewer ----------
+  const $ = (id) => document.getElementById(id);
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;   // then open on a still instead of autoplaying
+  const view = { mode: 'timeline', playing: !calm && !params.has('t'), sound: false, T: params.has('t') ? parseFloat(params.get('t')) : (calm ? 11.0 : 0),
+    yaw: 0.25, pitch: -0.08, zoom: 1, pan: [0, 0], E: 0, foil: 1, rs: 1, last: 0, slow: 0 };
+  let audio = null;
+
+  function freeState(now) {
+    const s = timeline(3.0);
+    Object.assign(s, { yaw: view.yaw * (1 - 0.8 * view.E), pitch: view.pitch + view.E * rad(-50), roll: view.E * rad(-14), pos: [0, Math.sin(now * 0.9) * 0.015, 0], cam: Math.max(1.7, (5.4 + 2.75 * view.E) / view.zoom),
+      look: [0.26 * view.E - view.pan[0], 0.10 * view.E - view.pan[1], 0], E: view.E, sheet: view.E, foil: view.foil, flash: 0, fade: 1, dof: 0.45 * (1 - view.E), caption: null, captionA: 0 });
+    s.layers = layerState(view.E);
+    s.labelA = s.layers.e.map((e) => smooth(0.75, 1.0, e));
+    return s;
+  }
+
+  function syncUI() {
+    const running = view.mode === 'timeline' && view.playing;
+    $('play').textContent = running ? '暫停' : '播放影片';
+    $('sound').textContent = view.sound ? '關閉配樂' : '開啟配樂';
+    $('sound').setAttribute('aria-pressed', String(view.sound));
+  }
+  function syncAudio() {
+    if (!audio) return;
+    if (view.sound && view.mode === 'timeline' && view.playing) { audio.currentTime = Math.min(view.T, DUR - 0.05); audio.play().catch(() => {}); }
+    else audio.pause();
+  }
+  function setPlaying(on) {
+    if (on) { view.mode = 'timeline'; if (view.T >= DUR - 0.05) view.T = 0; }
+    view.playing = on; syncAudio(); syncUI();
+  }
+  function goFree() { if (view.mode !== 'free') { view.mode = 'free'; view.playing = false; syncAudio(); syncUI(); } }
+  function setZoom(z) { view.zoom = Math.max(0.5, Math.min(3, z)); $('zoom').value = view.zoom; }
+  function resetView() { goFree(); view.yaw = 0.25; view.pitch = -0.08; view.pan = [0, 0]; setZoom(1); }
+
+  function loop(ms) {
+    const now = ms / 1000, dt = Math.min(0.1, now - (view.last || now)); view.last = now;
+    // on a slow GPU, lower the render resolution instead of stuttering
+    view.slow = dt > 0.034 ? view.slow + 1 : Math.max(0, view.slow - 1);
+    if (view.slow > 40 && view.rs > 0.5) { view.rs -= 0.25; view.slow = 0; }
+    if (view.mode === 'timeline') {
+      if (view.playing) {
+        view.T = view.sound && audio && !audio.paused ? audio.currentTime : view.T + dt;
+        if (view.T >= DUR - 0.001) { view.T = 0; syncAudio(); }   // loop
+        $('seek').value = view.T;
+      }
+      renderFrame(timeline(view.T), view.T, view.rs);
+      $('time').textContent = view.T.toFixed(1) + ' / ' + DUR.toFixed(0) + ' s';
+    } else {
+      renderFrame(freeState(now), now, view.rs);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function bindUI() {
+    $('play').onclick = () => setPlaying(!(view.mode === 'timeline' && view.playing));
+    $('sound').onclick = () => { view.sound = !view.sound; syncAudio(); syncUI(); };
+    $('seek').oninput = (e) => { view.mode = 'timeline'; view.playing = false; view.T = parseFloat(e.target.value); syncAudio(); syncUI(); };
+    $('explode').oninput = (e) => { goFree(); view.E = parseFloat(e.target.value); };
+    $('foil').oninput = (e) => { goFree(); view.foil = parseFloat(e.target.value); };
+    $('reset').onclick = () => { resetView(); view.E = 0; view.foil = 1; $('explode').value = 0; $('foil').value = 1; layerOn.fill(1); document.querySelectorAll('#layers input').forEach((c) => (c.checked = true)); };
+    const box = $('layers');
+    for (let i = NL - 1; i >= 0; i--) {
+      const lab = document.createElement('label');
+      lab.innerHTML = `<input type="checkbox" id="layer-${i + 1}" checked> <b>0${i + 1}</b> ${LABELS[i][1]} <span>${LABELS[i][0]}</span>`;
+      lab.querySelector('input').onchange = (e) => { layerOn[i] = e.target.checked ? 1 : 0; };
+      box.appendChild(lab);
+    }
+    if (document.fonts && document.fonts.load) {   // the canvas labels use the page's web fonts
+      document.fonts.load('600 24px Barlow', 'LAYERS').catch(() => {});
+      document.fonts.load('21px "Noto Sans TC"', LABELS.map((l) => l[1]).join('') + '景深視差分層結構').catch(() => {});
+    }
+    // one pointer rotates (Shift / right / middle button: moves); two pointers pinch-zoom and move; the wheel zooms
+    $('zoom').oninput = (e) => { goFree(); setZoom(parseFloat(e.target.value)); };
+    $('resetView').onclick = resetView;
+    const pts = new Map(); let grab = null;
+    const unitsPerPx = () => 2 * ((5.4 + 2.75 * view.E) / view.zoom) * FOV / out.clientHeight;
+    const lim = (v, a) => Math.max(-a, Math.min(a, v));
+    const regrab = () => {
+      const p = [...pts.values()];
+      if (p.length === 1) grab = { two: false, x: p[0].x, y: p[0].y, yaw: view.yaw, pitch: view.pitch, pan: view.pan.slice(), move: p[0].move };
+      else if (p.length >= 2) grab = { two: true, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), mx: (p[0].x + p[1].x) / 2, my: (p[0].y + p[1].y) / 2, zoom: view.zoom, pan: view.pan.slice() };
+      else grab = null;
+    };
+    out.addEventListener('pointerdown', (e) => {
+      out.setPointerCapture(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY, move: e.shiftKey || e.button === 1 || e.button === 2 });
+      goFree(); regrab();
+    });
+    out.addEventListener('pointermove', (e) => {
+      const me = pts.get(e.pointerId);
+      if (!me || !grab) return;
+      me.x = e.clientX; me.y = e.clientY;
+      const p = [...pts.values()], k = unitsPerPx();
+      if (!grab.two) {
+        const dx = p[0].x - grab.x, dy = p[0].y - grab.y;
+        if (grab.move) view.pan = [lim(grab.pan[0] + dx * k, 3), lim(grab.pan[1] - dy * k, 3)];
+        else { view.yaw = grab.yaw + dx * 2.2 / out.clientHeight; view.pitch = lim(grab.pitch + dy * 2.2 / out.clientHeight, 1.2); }
+      } else if (p.length >= 2) {
+        const mx = (p[0].x + p[1].x) / 2, my = (p[0].y + p[1].y) / 2;
+        setZoom(grab.zoom * Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) / Math.max(20, grab.d));
+        view.pan = [lim(grab.pan[0] + (mx - grab.mx) * k, 3), lim(grab.pan[1] - (my - grab.my) * k, 3)];
+      }
+    });
+    const drop = (e) => { pts.delete(e.pointerId); regrab(); };
+    out.addEventListener('pointerup', drop);
+    out.addEventListener('pointercancel', drop);
+    out.addEventListener('wheel', (e) => { e.preventDefault(); goFree(); setZoom(view.zoom * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 16 : 1) * 0.0015)); }, { passive: false });
+    out.addEventListener('contextmenu', (e) => e.preventDefault());
+    out.addEventListener('dblclick', resetView);
+    audio = new Audio('assets/' + (manifest.music || 'music.wav')); audio.preload = 'auto';
+    audio.addEventListener('error', () => { audio = null; $('sound').hidden = true; });
+  }
+
+  init().then(() => {
+    if (params.has('capture')) {
+      const times = params.has('times') ? params.get('times').split(',').map(Number) : Array.from({ length: Math.round(DUR * FPS) }, (_, i) => i / FPS);
+      return capture(times, params.get('dir') || 'frames', parseFloat(params.get('ss') || '2'));
+    }
+    bindUI(); syncUI(); $('seek').value = view.T; $('loading').hidden = true; requestAnimationFrame(loop);
+  }).catch((e) => {
+    window.__err = String(e && e.message || e); console.error(e);
+    $('loading').hidden = true;
+    const el = $('error'); el.hidden = false;
+    el.textContent = gl ? '卡牌載入失敗：' + window.__err : '這個瀏覽器不支援 WebGL2，無法顯示即時 3D 卡牌。請改用新版 Chrome、Edge、Safari 或 Firefox。';
+  });
+})();
+
+</script>
+</body>
+</html>
