@@ -1,0 +1,85 @@
+{
+ "id": "tide",
+ "no": 1,
+ "size": [
+  1500,
+  2100
+ ],
+ "card": {
+  "title": "星潮魔導姬",
+  "subtitle": "PRINCESS OF THE AETHER TIDE",
+  "rarity": "SSR",
+  "element_zh": "水 · 魔導士",
+  "element_en": "WATER / ARCANIST",
+  "stats": "ATK 2800 · DEF 2400",
+  "flavor": "「潮起之時，連星光也為她讓路。」",
+  "stars": 5,
+  "number": "#001/100",
+  "set": "AETHER TIDE · 1ST EDITION"
+ },
+ "layers": [
+  "base",
+  "fx",
+  "frame",
+  "char",
+  "text"
+ ],
+ "back": "../back.jpg",
+ "music": "music.mp4",
+ "z": [
+  -0.15,
+  -0.148,
+  -0.08,
+  0.0,
+  0.03,
+  0.05,
+  0.052
+ ],
+ "fx": "glow",
+ "stage": [
+  0.12,
+  0.8,
+  0.92
+ ],
+ "foil_centre": [
+  0.0,
+  0.13
+ ],
+ "gem": [
+  0.55,
+  1.0,
+  1.0
+ ],
+ "labels": [
+  [
+   "BASE ART",
+   "背景底圖"
+  ],
+  [
+   "HOLO FOIL",
+   "鐳射箔"
+  ],
+  [
+   "MAGIC FX",
+   "魔法光效"
+  ],
+  [
+   "FRAME",
+   "金箔卡框"
+  ],
+  [
+   "CHARACTER",
+   "角色主體"
+  ],
+  [
+   "TEXT",
+   "卡面文字"
+  ],
+  [
+   "GLOSS",
+   "亮面光澤"
+  ]
+ ],
+ "poster": "poster.jpg",
+ "ext": "webp"
+}

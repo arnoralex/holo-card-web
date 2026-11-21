@@ -1,0 +1,72 @@
+[
+ {
+  "id": "tide",
+  "no": 1,
+  "title": "星潮魔導姬",
+  "subtitle": "PRINCESS OF THE AETHER TIDE",
+  "rarity": "SSR",
+  "number": "#001/100",
+  "element": "水 · 魔導士",
+  "stage": [
+   0.12,
+   0.8,
+   0.92
+  ]
+ },
+ {
+  "id": "raven",
+  "no": 2,
+  "title": "赤鴉元帥",
+  "subtitle": "MARSHAL OF THE CRIMSON RAVEN",
+  "rarity": "SSR",
+  "number": "#002/100",
+  "element": "暗 · 指揮官",
+  "stage": [
+   0.95,
+   0.2,
+   0.18
+  ]
+ },
+ {
+  "id": "scythe",
+  "no": 3,
+  "title": "緋月鐮姬",
+  "subtitle": "SCYTHE MAIDEN OF THE BLOOD MOON",
+  "rarity": "UR",
+  "number": "#003/100",
+  "element": "火 · 惡魔",
+  "stage": [
+   1.0,
+   0.22,
+   0.1
+  ]
+ },
+ {
+  "id": "thorn",
+  "no": 4,
+  "title": "荊輪狂王",
+  "subtitle": "MAD KING OF THE THORN HALO",
+  "rarity": "SSR",
+  "number": "#004/100",
+  "element": "光 · 狂戰士",
+  "stage": [
+   1.0,
+   0.7,
+   0.24
+  ]
+ },
+ {
+  "id": "shaman",
+  "no": 5,
+  "title": "南風花巫女",
+  "subtitle": "FLOWER SHAMAN OF THE SOUTH WIND",
+  "rarity": "SSR",
+  "number": "#005/100",
+  "element": "風 · 巫祝",
+  "stage": [
+   0.14,
+   0.85,
+   0.68
+  ]
+ }
+]

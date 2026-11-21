@@ -1,0 +1,85 @@
+{
+ "id": "raven",
+ "no": 2,
+ "size": [
+  1500,
+  2100
+ ],
+ "card": {
+  "title": "赤鴉元帥",
+  "subtitle": "MARSHAL OF THE CRIMSON RAVEN",
+  "rarity": "SSR",
+  "element_zh": "暗 · 指揮官",
+  "element_en": "DARK / COMMANDER",
+  "stats": "ATK 3100 · DEF 2900",
+  "flavor": "「他從不拔劍，因為命令比刀更快。」",
+  "stars": 5,
+  "number": "#002/100",
+  "set": "AETHER TIDE · 1ST EDITION"
+ },
+ "layers": [
+  "base",
+  "fx",
+  "frame",
+  "char",
+  "text"
+ ],
+ "back": "../back.jpg",
+ "music": "music.mp4",
+ "z": [
+  -0.15,
+  -0.148,
+  -0.08,
+  0.0,
+  0.03,
+  0.05,
+  0.052
+ ],
+ "fx": "aura",
+ "stage": [
+  0.95,
+  0.2,
+  0.18
+ ],
+ "foil_centre": [
+  0.0,
+  0.2
+ ],
+ "gem": [
+  0.55,
+  1.0,
+  1.0
+ ],
+ "labels": [
+  [
+   "BASE ART",
+   "背景底圖"
+  ],
+  [
+   "HOLO FOIL",
+   "鐳射箔"
+  ],
+  [
+   "AURA",
+   "威壓靈氣"
+  ],
+  [
+   "FRAME",
+   "金箔卡框"
+  ],
+  [
+   "CHARACTER",
+   "角色主體"
+  ],
+  [
+   "TEXT",
+   "卡面文字"
+  ],
+  [
+   "GLOSS",
+   "亮面光澤"
+  ]
+ ],
+ "poster": "poster.jpg",
+ "ext": "webp"
+}

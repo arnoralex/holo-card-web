@@ -1,0 +1,85 @@
+{
+ "id": "shaman",
+ "no": 5,
+ "size": [
+  1500,
+  2100
+ ],
+ "card": {
+  "title": "南風花巫女",
+  "subtitle": "FLOWER SHAMAN OF THE SOUTH WIND",
+  "rarity": "SSR",
+  "element_zh": "風 · 巫祝",
+  "element_en": "WIND / SHAMAN",
+  "stats": "ATK 2400 · DEF 2600",
+  "flavor": "「她一笑，整片海岸的花就開了。」",
+  "stars": 5,
+  "number": "#005/100",
+  "set": "AETHER TIDE · 1ST EDITION"
+ },
+ "layers": [
+  "base",
+  "fx",
+  "frame",
+  "char",
+  "text"
+ ],
+ "back": "../back.jpg",
+ "music": "music.mp4",
+ "z": [
+  -0.15,
+  -0.148,
+  -0.09,
+  0.0,
+  -0.03,
+  0.05,
+  0.052
+ ],
+ "fx": "aura",
+ "stage": [
+  0.14,
+  0.85,
+  0.68
+ ],
+ "foil_centre": [
+  0.0,
+  0.24
+ ],
+ "gem": [
+  0.55,
+  1.0,
+  1.0
+ ],
+ "labels": [
+  [
+   "BASE ART",
+   "背景底圖"
+  ],
+  [
+   "HOLO FOIL",
+   "鐳射箔"
+  ],
+  [
+   "AURA",
+   "南風靈氣"
+  ],
+  [
+   "FRAME",
+   "金箔卡框"
+  ],
+  [
+   "CHARACTER",
+   "角色主體"
+  ],
+  [
+   "TEXT",
+   "卡面文字"
+  ],
+  [
+   "GLOSS",
+   "亮面光澤"
+  ]
+ ],
+ "poster": "poster.jpg",
+ "ext": "webp"
+}

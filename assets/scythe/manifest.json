@@ -1,0 +1,86 @@
+{
+ "id": "scythe",
+ "no": 3,
+ "size": [
+  1500,
+  2100
+ ],
+ "card": {
+  "title": "緋月鐮姬",
+  "subtitle": "SCYTHE MAIDEN OF THE BLOOD MOON",
+  "rarity": "UR",
+  "element_zh": "火 · 惡魔",
+  "element_en": "FIRE / DEMON",
+  "stats": "ATK 3400 · DEF 1900",
+  "flavor": "「廢墟還在燃燒，她已經在找下一座城。」",
+  "stars": 5,
+  "number": "#003/100",
+  "set": "AETHER TIDE · 1ST EDITION"
+ },
+ "layers": [
+  "base",
+  "fx",
+  "frame",
+  "char",
+  "text"
+ ],
+ "back": "../back.jpg",
+ "music": "music.mp4",
+ "z": [
+  -0.12,
+  -0.118,
+  -0.06,
+  0.0,
+  0.03,
+  0.05,
+  0.052
+ ],
+ "fx": "fire",
+ "foil": 0.8,
+ "stage": [
+  1.0,
+  0.22,
+  0.1
+ ],
+ "foil_centre": [
+  0.0,
+  0.726
+ ],
+ "gem": [
+  1.0,
+  0.25,
+  0.12
+ ],
+ "labels": [
+  [
+   "BASE ART",
+   "背景底圖"
+  ],
+  [
+   "HOLO FOIL",
+   "鐳射箔"
+  ],
+  [
+   "HELLFIRE",
+   "業火"
+  ],
+  [
+   "FRAME",
+   "金箔卡框"
+  ],
+  [
+   "CHARACTER",
+   "角色主體"
+  ],
+  [
+   "TEXT",
+   "卡面文字"
+  ],
+  [
+   "GLOSS",
+   "亮面光澤"
+  ]
+ ],
+ "poster": "poster.jpg",
+ "ext": "webp"
+}
